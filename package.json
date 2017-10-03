@@ -21,6 +21,7 @@
     "ffmpeg-binaries": "^3.2.2-3",
     "fs": "0.0.1-security",
     "get-youtube-id": "^1.0.0",
+    "mongoose": "^4.12.0",
     "opusscript": "0.0.3",
     "request": "^2.83.0",
     "youtube-info": "^1.1.2",

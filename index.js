@@ -59,7 +59,7 @@ client.on('message', function(message){
                 skipSong(message);
                 message.reply(' your skip has been approved. Skipping now!');
             } else {
-                message.reply(' your skip has been acknowledged. You need **' + (Math.ceil(voiceChannel.members.size - 1 / 2) - skipReq) + '** more skip votes');
+                message.reply(' your skip has been acknowledged. You need **' + (Math.ceil((voiceChannel.members.size - 1) / 2) - skipReq) + '** more skip votes');
             }
         } else {
             message.reply(' you already voted to skip!');
@@ -79,8 +79,9 @@ function isYoutube(str){
 }
 
 function searchVideo(query, callback){
-    request("https://www.googleapis.com/youtube/v3/search?part=id&type=video&query=" + encodeURIComponent(query) + "&key=" + ytApi, function(error, body){
-        var json = JSON.parse(body);
+    request("https://www.googleapis.com/youtube/v3/search?part=id&type=video&q=" + encodeURIComponent(query) + "&key=" + ytApi, function(error, resp, data){
+        console.log(encodeURIComponent(query));
+        var json = JSON.parse(data);
         callback(json.items[0].id.videoId);
     });
 }
@@ -131,7 +132,8 @@ function playMusic(id, message){
 
 function skipSong(message){
     dispatcher.end();
-    if(queue.length > 1){
+    console.log(`The queue length is: ` + queue.length);
+    if(queue.length === 0 ){
         playMusic(queue[0], message);
     } else {
         skipReq = 0;

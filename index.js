@@ -23,81 +23,108 @@ var skippers = [];
 
 client.login(discordToken);
 
-client.on('message', function(message){
+client.on('message', function (message) {
     const member = message.member;
     const mess = message.content.toLowerCase();
     const args = message.content.split(' ').slice(1).join(" ");
-    if(mess.startsWith(prefix + "play")){
-        if(member.voiceChannel || client.guilds.get("315255146508713984").voiceConnection != null){
-        if(queue.length > 0 || isPlaying) {
-            getID(args, function(id){
-                addToQueue(id);
-                fetchVideoInfo(id, function(err, videoInfo){
-                    if(err) throw new Error(err);
-                    message.reply(" added to queue **" + videoInfo.title + "**");
+    if (mess.startsWith(prefix + "play")) {
+        if (member.voiceChannel || client.guilds.get("315255146508713984").voiceConnection != null) {
+            if (queue.length > 0 || isPlaying) {
+                getID(args, function (id) {
+                    addToQueue(id);
+                    fetchVideoInfo(id, function (err, videoInfo) {
+                        if (err) throw new Error(err);
+                        message.reply(" added to queue **" + videoInfo.title + "**");
+                    });
                 });
-            });
+            } else {
+                isPlaying = true;
+                getID(args, function (id) {
+                    queue.push("placeholder");
+                    playMusic(id, message);
+                    fetchVideoInfo(id, function (err, videoInfo) {
+                        if (err) throw new Error(err);
+                        message.reply(" now playing **" + videoInfo.title + "**");
+                    });
+                });
+            }
         } else {
-            isPlaying = true;
-            getID(args, function(id){
-                queue.push("placeholder");
-                playMusic(id, message);
-                fetchVideoInfo(id, function(err, videoInfo){
-                    if(err) throw new Error(err);
-                    message.reply(" now playing **" + videoInfo.title + "**");
-                });
-            });
+            message.reply(' you need to be in a voice channel!');
         }
-    } else {
-        message.reply(' you need to be in a voice channel!');
-    }
-    } else if (mess.startsWith(prefix + 'skip')){
-        if(skippers.indexOf(message.author.id) === -1){
+    } else if (mess.startsWith(prefix + 'skip')) {
+        if (skippers.indexOf(message.author.id) === -1) {
             skippers.push(message.author.id);
             skipReq++;
-            if(skipReq >= Math.ceil((voiceChannel.members.size - 1) / 2)){
+            if (skipReq >= Math.ceil((voiceChannel.members.size - 1) / 2)) {
                 skipSong(message);
                 message.reply(' your skip has been approved. Skipping now!');
             } else {
                 message.reply(' your skip has been acknowledged. You need **' + (Math.ceil((voiceChannel.members.size - 1) / 2) - skipReq) + '** more skip votes');
             }
+        }
+        else {
+            message.reply(' you already voted to skip!');
+        }
+
+
+        if (skippers.indexOf(message.author.id) === -1) {
+            skippers.push(message.author.id);
+            skipReq++;
+            if (skipReq >= Math.ceil((voiceChannel.members.size - 1) / 2)) {
+                skipSong(message);
+                message.reply(' your skip has been approved. Skipping now!');
+            } else {
+                message.reply(' your skip has been acknowledged. You need **' + (Math.ceil((voiceChannel.members.size - 1) / 2) - skipReq) + '** more skip votes');
+            }
+        } else if (msg.author.id === config.admin) {
+
+            skipSong(message);
+
+
         } else {
             message.reply(' you already voted to skip!');
         }
-    } 
+    } else if (mess.startsWith(prefix + 'leave')) {
+        if (message.author.id === config.admin) {
+            voiceChannel = message.member.voiceChannel;
+            voiceChannel.leave();
+        } else {
+            message.reply(' :haHAA, please try again, IDIOT');
+        }
+    }
 
 });
 
-client.on('ready', function(){
+client.on('ready', function () {
     console.log("I am ready!");
     console.log(ytApi);
 });
 
 
-function isYoutube(str){
+function isYoutube(str) {
     return str.toLowerCase().indexOf("youtube.com") > -1;
 }
 
-function searchVideo(query, callback){
-    request("https://www.googleapis.com/youtube/v3/search?part=id&type=video&q=" + encodeURIComponent(query) + "&key=" + ytApi, function(error, resp, data){
-        console.log(encodeURIComponent(query));
+function searchVideo(query, callback) {
+    request("https://www.googleapis.com/youtube/v3/search?part=id&type=video&q=" + encodeURIComponent(query) + "&key=" + ytApi, function (error, resp, data) {
         var json = JSON.parse(data);
+        console.log(json.items[0].id.videoId);
         callback(json.items[0].id.videoId);
     });
 }
 
-function getID(str, cb){
-    if(isYoutube(str)){
+function getID(str, cb) {
+    if (isYoutube(str)) {
         cb(getYouTubeID(str));
     } else {
-        searchVideo(str, function(id){
+        searchVideo(str, function (id) {
             cb(id);
         });
     }
 }
 
-function addToQueue(strID){
-    if(isYoutube(strID)){
+function addToQueue(strID) {
+    if (isYoutube(strID)) {
         queue.push(getYouTubeID(strID));
 
     } else {
@@ -105,10 +132,11 @@ function addToQueue(strID){
     }
 }
 
-function playMusic(id, message){
+function playMusic(id, message) {
+    console.log('The ID in playMusic is' + queue.length);
     voiceChannel = message.member.voiceChannel;
 
-    voiceChannel.join().then(function(connection){
+    voiceChannel.join().then(function (connection) {
         stream = ytdl("https://www.youtube.com/watch?v=" + id, {
             filter: 'audioonly'
         });
@@ -116,13 +144,13 @@ function playMusic(id, message){
         skippers = [];
 
         dispatcher = connection.playStream(stream);
-        dispatcher.on('end', function(){
+        dispatcher.on('end', function () {
             skipReq = 0;
             skippers = [];
             queue.shift();
-            if(queue.length === 0){
+            if (queue.length === 0) {
                 queue = [];
-                isPlaying  = false;
+                isPlaying = false;
             } else {
                 playMusic(queue[0], message);
             }
@@ -130,14 +158,7 @@ function playMusic(id, message){
     });
 }
 
-function skipSong(message){
+function skipSong(message) {
     dispatcher.end();
-    console.log(`The queue length is: ` + queue.length);
-    if(queue.length === 0 ){
-        playMusic(queue[0], message);
-    } else {
-        skipReq = 0;
-        skippers = [];
-    }
 }
 
